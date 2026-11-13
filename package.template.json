@@ -1,0 +1,27 @@
+{
+	"name": "vue-syntax",
+	"publisher": "alecgibson",
+	"displayName": "Vue Syntax (Restricted Mode)",
+	"description": "Syntax highlighting for .vue files in Restricted Mode, using the grammar from Vue (Official).",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/alecgibson/vue-syntax.git"
+	},
+	"categories": [
+		"Programming Languages"
+	],
+	"keywords": [
+		"vue",
+		"syntax",
+		"highlighting",
+		"restricted mode",
+		"workspace trust"
+	],
+	"capabilities": {
+		"untrustedWorkspaces": {
+			"supported": true
+		},
+		"virtualWorkspaces": true
+	}
+}

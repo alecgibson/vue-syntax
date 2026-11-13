@@ -1,0 +1,7 @@
+{
+	"private": true,
+	"dependencies": {
+		"@vscode/vsce": "4.1.0",
+		"ovsx": "1.3.0"
+	}
+}

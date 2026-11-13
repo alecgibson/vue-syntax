@@ -1,0 +1,146 @@
+name: Publish
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions: {}
+
+concurrency:
+  group: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'publish' || github.run_id }}
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  VSIX: vue-syntax.vsix
+
+jobs:
+  check:
+    name: Find the latest upstream release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.upstream.outputs.tag }}
+      new: ${{ steps.upstream.outputs.new }}
+    steps:
+      - name: Check out this repository
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref }}
+          persist-credentials: false
+      - name: Compare the latest stable tag with the published version
+        id: upstream
+        run: |
+          tag="$(git ls-remote --tags --refs https://github.com/vuejs/language-tools \
+            | sed 's#.*refs/tags/##' \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | sort -V | tail -1)"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if [[ "${tag#v}" == "$(cat upstream-version 2>/dev/null)" ]]; then
+            echo "Already published $tag"
+            echo "new=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  package:
+    name: Build the extension
+    needs: check
+    if: github.event_name == 'push' || github.event_name == 'pull_request' || needs.check.outputs.new == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out this repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Check out vuejs/language-tools ${{ needs.check.outputs.tag }}
+        uses: actions/checkout@v7
+        with:
+          repository: vuejs/language-tools
+          ref: ${{ needs.check.outputs.tag }}
+          path: upstream
+          sparse-checkout: extensions/vscode
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Install vsce and ovsx
+        run: npm ci --prefix tools
+      - name: Check that the build refuses bad upstreams
+        run: ./build-check.sh upstream/extensions/vscode
+      - name: Build the extension directory
+        run: ./build.sh upstream/extensions/vscode dist
+      - name: Package the extension
+        working-directory: dist
+        run: ../tools/node_modules/.bin/vsce package --no-dependencies --out "../$VSIX"
+      - name: Upload the package
+        uses: actions/upload-artifact@v7
+        with:
+          name: vsix
+          path: ${{ env.VSIX }}
+
+  publish:
+    name: Publish
+    needs: [check, package]
+    if: needs.check.outputs.new == 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      HAS_OVSX_PAT: ${{ secrets.OVSX_PAT != '' }}
+    steps:
+      - name: Check out the tools
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: tools
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Install vsce and ovsx
+        run: npm ci --prefix tools
+      - name: Download the package
+        uses: actions/download-artifact@v8
+        with:
+          name: vsix
+      - name: Publish to the Visual Studio Marketplace
+        run: tools/node_modules/.bin/vsce publish --oidc --skip-duplicate --packagePath "$VSIX"
+      - name: Publish to Open VSX
+        if: env.HAS_OVSX_PAT == 'true'
+        run: tools/node_modules/.bin/ovsx publish "$VSIX" --skip-duplicate
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+
+  record:
+    name: Record the published version
+    needs: [check, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out this repository
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref }}
+      - name: Commit the published version
+        env:
+          TAG: ${{ needs.check.outputs.tag }}
+        run: |
+          echo "${TAG#v}" > upstream-version
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add upstream-version
+          git commit -m "🔖 Publish $TAG"
+          git push
