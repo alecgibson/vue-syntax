@@ -4,6 +4,7 @@
 	"displayName": "Vue Syntax (Restricted Mode)",
 	"description": "Syntax highlighting for .vue files in Restricted Mode, using the grammar from Vue (Official).",
 	"license": "MIT",
+	"icon": "icon.png",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/alecgibson/vue-syntax.git"

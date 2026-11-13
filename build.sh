@@ -16,7 +16,7 @@ if jq -e '.capabilities.untrustedWorkspaces.supported | IN(true, "limited")' "$u
 fi
 
 mkdir "$out"
-cp -R "$upstream/syntaxes" "$upstream/languages" "$upstream/LICENSE" "$here/README.md" "$out/"
+cp -R "$upstream/syntaxes" "$upstream/languages" "$upstream/LICENSE" "$here/README.md" "$here/icon.png" "$out/"
 
 jq --slurpfile upstream "$upstream/package.json" '
   . + ($upstream[0] |

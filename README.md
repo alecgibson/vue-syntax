@@ -18,4 +18,6 @@ Every day, a workflow checks [vuejs/language-tools](https://github.com/vuejs/lan
 
 ## License
 
-The grammars and language configuration come from [vuejs/language-tools](https://github.com/vuejs/language-tools), © 2021-present Johnson Chu, under the MIT License. The rest of this repository is MIT too.
+The grammars and language configuration come from [vuejs/language-tools](https://github.com/vuejs/language-tools), © 2021-present Johnson Chu, under the MIT License. The rest of this repository is MIT too, except the icon.
+
+The icon, `icon.svg` and `icon.png`, is the Vue logo by Evan You with a shield and padlock added in the bottom-right corner. Like the logo, it is under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/), with the extra conditions in [vuejs/art](https://github.com/vuejs/art).
